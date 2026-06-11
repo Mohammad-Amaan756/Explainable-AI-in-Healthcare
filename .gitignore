@@ -1,15 +1,12 @@
+data/
+notebooks/data/
+models/
+results/
+.venv/
+venv/
 __pycache__/
 *.pyc
 *.pkl
 *.pth
 .env
-.venv/
-venv/
-.DS_Store
 .ipynb_checkpoints/
-results/
-models/
-
-# Dataset
-data/
-notebooks/data/
