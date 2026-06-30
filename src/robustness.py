@@ -113,6 +113,7 @@ def main():
     checkpoint = torch.load(args.model_path, map_location=device)
     model = get_classifier(num_classes=len(classes), pretrained=False)
     model.load_state_dict(checkpoint["model_state_dict"])
+    model = model.to(device)
     corruption_types = ["noise", "blur", "jpeg"]
     severities = [0.02, 0.05, 0.1]
     results = evaluate_robustness(model, dataloader, corruption_types, severities, device)

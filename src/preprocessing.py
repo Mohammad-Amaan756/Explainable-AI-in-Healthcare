@@ -13,6 +13,63 @@ from torchvision import transforms
 IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]
 
 
+class TumorClassificationDataset(Dataset):
+    def __init__(self, filepaths: List[str], labels: List[int], transform=None):
+        self.filepaths = filepaths
+        self.labels = labels
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.filepaths)
+
+    def __getitem__(self, idx):
+        path = self.filepaths[idx]
+        image = Image.open(path).convert("RGB")
+        if self.transform is not None:
+            image = self.transform(image)
+        label = self.labels[idx]
+        return image, label
+
+
+class TumorSegmentationDataset(Dataset):
+    def __init__(self, image_paths: List[str], mask_paths: List[str], image_size: Tuple[int, int] = (256, 256), augment: bool = False):
+        self.image_paths = image_paths
+        self.mask_paths = mask_paths
+        self.image_size = image_size
+        self.augment = augment
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        image = get_segmentation_image(self.image_paths[idx], self.image_size)
+        mask = get_segmentation_mask(self.mask_paths[idx], self.image_size)
+
+        if self.augment:
+            image, mask = self.random_flip(image, mask)
+            image, mask = self.random_rotate(image, mask)
+
+        image_tensor = torch.from_numpy(image.transpose(2, 0, 1)).float()
+        mask_tensor = torch.from_numpy(mask.transpose(2, 0, 1)).float()
+        return image_tensor, mask_tensor
+
+    def random_flip(self, image: np.ndarray, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        if random.random() > 0.5:
+            image = np.fliplr(image).copy()
+            mask = np.fliplr(mask).copy()
+        if random.random() > 0.5:
+            image = np.flipud(image).copy()
+            mask = np.flipud(mask).copy()
+        return image, mask
+
+    def random_rotate(self, image: np.ndarray, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        angle = random.choice([0, 90, 180, 270])
+        if angle != 0:
+            image = np.rot90(image, k=angle // 90).copy()
+            mask = np.rot90(mask, k=angle // 90).copy()
+        return image, mask
+
+
 def set_seed(seed: int = 42) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -133,60 +190,3 @@ def build_segmentation_datasets(
     train_dataset = TumorSegmentationDataset([x for x, _ in train_pairs], [y for _, y in train_pairs], image_size=image_size, augment=True)
     val_dataset = TumorSegmentationDataset([x for x, _ in val_pairs], [y for _, y in val_pairs], image_size=image_size, augment=False)
     return train_dataset, val_dataset
-
-
-class TumorClassificationDataset(Dataset):
-    def __init__(self, filepaths: List[str], labels: List[int], transform=None):
-        self.filepaths = filepaths
-        self.labels = labels
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.filepaths)
-
-    def __getitem__(self, idx):
-        path = self.filepaths[idx]
-        image = Image.open(path).convert("RGB")
-        if self.transform is not None:
-            image = self.transform(image)
-        label = self.labels[idx]
-        return image, label
-
-
-class TumorSegmentationDataset(Dataset):
-    def __init__(self, image_paths: List[str], mask_paths: List[str], image_size: Tuple[int, int] = (256, 256), augment: bool = False):
-        self.image_paths = image_paths
-        self.mask_paths = mask_paths
-        self.image_size = image_size
-        self.augment = augment
-
-    def __len__(self):
-        return len(self.image_paths)
-
-    def __getitem__(self, idx):
-        image = get_segmentation_image(self.image_paths[idx], self.image_size)
-        mask = get_segmentation_mask(self.mask_paths[idx], self.image_size)
-
-        if self.augment:
-            image, mask = self.random_flip(image, mask)
-            image, mask = self.random_rotate(image, mask)
-
-        image_tensor = torch.from_numpy(image.transpose(2, 0, 1)).float()
-        mask_tensor = torch.from_numpy(mask.transpose(2, 0, 1)).float()
-        return image_tensor, mask_tensor
-
-    def random_flip(self, image: np.ndarray, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        if random.random() > 0.5:
-            image = np.fliplr(image).copy()
-            mask = np.fliplr(mask).copy()
-        if random.random() > 0.5:
-            image = np.flipud(image).copy()
-            mask = np.flipud(mask).copy()
-        return image, mask
-
-    def random_rotate(self, image: np.ndarray, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        angle = random.choice([0, 90, 180, 270])
-        if angle != 0:
-            image = np.rot90(image, k=angle // 90).copy()
-            mask = np.rot90(mask, k=angle // 90).copy()
-        return image, mask

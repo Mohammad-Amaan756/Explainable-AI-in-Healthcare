@@ -29,13 +29,14 @@ def dice_score(preds: torch.Tensor, targets: torch.Tensor, threshold: float = 0.
     return 2.0 * intersection / union
 
 
-def evaluate_classification(model, dataloader):
+def evaluate_classification(model, dataloader, device):
     model.eval()
     predictions: List[int] = []
     references: List[int] = []
 
     with torch.no_grad():
         for inputs, labels in dataloader:
+            inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             preds = torch.argmax(outputs, dim=1).cpu().numpy().tolist()
             predictions.extend(preds)
@@ -50,13 +51,14 @@ def evaluate_classification(model, dataloader):
     return metrics
 
 
-def evaluate_segmentation(model, dataloader):
+def evaluate_segmentation(model, dataloader, device):
     model.eval()
     dice_scores: List[float] = []
     losses: List[float] = []
 
     with torch.no_grad():
         for inputs, masks in dataloader:
+            inputs, masks = inputs.to(device), masks.to(device)
             outputs = model(inputs)
             dice_scores.append(dice_score(outputs, masks))
             losses.append(F.binary_cross_entropy_with_logits(outputs, masks).item())
@@ -110,7 +112,7 @@ def main():
         )
         dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
         model = load_checkpoint(args.model_path, task="classification", device=device, num_classes=len(classes))
-        metrics = evaluate_classification(model, dataloader)
+        metrics = evaluate_classification(model, dataloader, device)
         print("Classification evaluation")
         print_metrics(metrics)
 
@@ -124,7 +126,7 @@ def main():
         )
         dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
         model = load_checkpoint(args.model_path, task="segmentation", device=device)
-        metrics = evaluate_segmentation(model, dataloader)
+        metrics = evaluate_segmentation(model, dataloader, device)
         print("Segmentation evaluation")
         print_metrics(metrics)
 

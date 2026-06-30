@@ -99,3 +99,4 @@ def save_heatmap(output_dir: str, filename: str, image: np.ndarray, heatmap: np.
     result_path = os.path.join(output_dir, filename)
     Image.fromarray(overlay).save(result_path)
     return result_path
+    return result_path

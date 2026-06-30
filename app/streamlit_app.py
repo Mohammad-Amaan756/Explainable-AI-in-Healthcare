@@ -38,8 +38,8 @@ def load_segmentation_model(model_path: str):
 
 
 def predict_image(model, image: Image.Image):
-    image = image.resize((224, 224))
-    image_array = np.array(image).astype(np.float32) / 255.0
+    image_resized = image.resize((224, 224))
+    image_array = np.array(image_resized).astype(np.float32) / 255.0
     normalized = (image_array - np.array([0.485, 0.456, 0.406])) / np.array([0.229, 0.224, 0.225])
     tensor = torch.from_numpy(normalized.transpose(2, 0, 1)).unsqueeze(0).float()
     device = next(model.parameters()).device
@@ -48,6 +48,7 @@ def predict_image(model, image: Image.Image):
         output = model(tensor)
         scores = torch.softmax(output, dim=1).cpu().numpy()[0]
         label = int(np.argmax(scores))
+    return label, scores, tensor
     return label, scores, tensor
 
 
