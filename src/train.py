@@ -174,7 +174,7 @@ def train_classification(args):
 
         if val_acc > best_acc:
             best_acc = val_acc
-            torch.save({"model_state_dict": model.state_dict(), "classes": classes}, args.output)
+            torch.save({"model_state_dict": model.state_dict(), "classes": classes, "best_accuracy": best_acc, "epoch": epoch,}, args.output)
             print(f"Saved best classification checkpoint to {args.output}")
 
 
@@ -210,7 +210,7 @@ def train_segmentation(args):
             optimizer.step()
             epoch_loss += loss.item() * inputs.size(0)
 
-        epoch_loss /= len(train_loader.dataset)
+        epoch_loss /= len(train_loader)
         val_loss = validate_segmentation(model, val_loader, criterion, device)
         print(f"Epoch {epoch}/{args.epochs} | train_loss={epoch_loss:.4f} | val_loss={val_loss:.4f}")
 

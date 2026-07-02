@@ -10,7 +10,14 @@ if PACKAGE_ROOT not in sys.path:
 import numpy as np
 import torch
 import torch.nn.functional as F
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    classification_report,
+    confusion_matrix,
+)
 from torch.utils.data import DataLoader
 
 from preprocessing import build_classification_datasets, build_segmentation_datasets, TumorClassificationDataset, TumorSegmentationDataset
@@ -31,23 +38,53 @@ def dice_score(preds: torch.Tensor, targets: torch.Tensor, threshold: float = 0.
 
 def evaluate_classification(model, dataloader, device):
     model.eval()
-    predictions: List[int] = []
-    references: List[int] = []
+
+    predictions = []
+    references = []
 
     with torch.no_grad():
         for inputs, labels in dataloader:
-            inputs, labels = inputs.to(device), labels.to(device)
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+
             outputs = model(inputs)
-            preds = torch.argmax(outputs, dim=1).cpu().numpy().tolist()
-            predictions.extend(preds)
-            references.extend(labels.cpu().numpy().tolist())
+            preds = torch.argmax(outputs, dim=1)
+
+            predictions.extend(preds.cpu().numpy())
+            references.extend(labels.cpu().numpy())
 
     metrics = {
         "accuracy": accuracy_score(references, predictions),
-        "precision": precision_score(references, predictions, average="binary", zero_division=0),
-        "recall": recall_score(references, predictions, average="binary", zero_division=0),
-        "f1_score": f1_score(references, predictions, average="binary", zero_division=0),
+        "precision": precision_score(
+            references,
+            predictions,
+            average="weighted",
+            zero_division=0,
+        ),
+        "recall": recall_score(
+            references,
+            predictions,
+            average="weighted",
+            zero_division=0,
+        ),
+        "f1": f1_score(
+            references,
+            predictions,
+            average="weighted",
+            zero_division=0,
+        ),
     }
+
+    print("\n" + "=" * 60)
+    print("CLASSIFICATION REPORT")
+    print("=" * 60)
+    print(classification_report(references, predictions))
+
+    print("\n" + "=" * 60)
+    print("CONFUSION MATRIX")
+    print("=" * 60)
+    print(confusion_matrix(references, predictions))
+
     return metrics
 
 
@@ -74,7 +111,7 @@ def print_metrics(metrics: Dict[str, float]):
         print(f"{name}: {value:.4f}")
 
 
-def load_checkpoint(path: str, task: str, device: torch.device, num_classes: int = 2):
+def load_checkpoint(path: str, task: str, device: torch.device, num_classes: int = 5):
     checkpoint = torch.load(path, map_location=device)
     if task == "classification":
         model = get_classifier(num_classes=num_classes, pretrained=False)
